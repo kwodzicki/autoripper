@@ -31,6 +31,8 @@ requires-python = ">=3.9"
 dependencies = [
     "PyQt5",
     "pyudev",
+    "automakemkv@git+https://github.com/kwodzicki/autoMakeMKV",
+    "cdripper@git+https://github.com/kwodzicki/cdRipper",
 ]
 
 [project.scripts]
