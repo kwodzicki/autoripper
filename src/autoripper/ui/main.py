@@ -139,7 +139,7 @@ class SystemTray(QtWidgets.QSystemTrayIcon):
 
             path = QtWidgets.QFileDialog.getExistingDirectory(
                 QtWidgets.QDialog(),
-                f'{self._name}: Select Video Output Folder',
+                f'{self._name}: Select Audio Output Folder',
             )
             if path != '':
                 self.ripper.audio_outdir = path

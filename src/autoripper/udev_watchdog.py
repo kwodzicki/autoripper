@@ -167,7 +167,7 @@ class UdevWatchdog(QtCore.QThread):
                 continue
 
             if device.properties.get(READY, '') == '0':
-                self.log.debug("%s - Drive is ejectecd", dev)
+                self.log.debug("%s - Drive is ejected", dev)
                 self._ejecting(dev)
                 continue
 
