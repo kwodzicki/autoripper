@@ -15,6 +15,7 @@ import pyudev
 from automakemkv import OUTDIR as VIDEO_OUTDIR, UUID_ROOT, DBDIR
 from automakemkv import paths
 from automakemkv.ripper import DiscHandler as VideoDiscHandler
+from automakemkv.ui import dialogs as video_dialogs
 
 from cdripper import OUTDIR as AUDIO_OUTDIR
 from cdripper.ripper import DiscHandler as AudioDiscHandler
@@ -212,6 +213,16 @@ class UdevWatchdog(QtCore.QThread):
     def quit(self, *args, **kwargs):
         RUNNING.set()
 
+    def video_rip_failure(self, device: str):
+
+        dialog = video_dialogs.RipFailure(device)
+        dialog.exec_()
+
+    def video_rip_success(self, device: str):
+
+        dialog = video_dialogs.RipSuccess(device)
+        dialog.exec_()
+
     @QtCore.pyqtSlot(str, str)
     def handle_disc(self, dev: str, disc_type: str):
         """
@@ -223,7 +234,7 @@ class UdevWatchdog(QtCore.QThread):
 
         if disc_type == 'video':
             self.log.info("%s - Assuming video disc inserted", dev)
-            self._mounted[dev] = VideoDiscHandler(
+            obj = VideoDiscHandler(
                 dev,
                 self.video_outdir,
                 self.everything,
@@ -233,6 +244,10 @@ class UdevWatchdog(QtCore.QThread):
                 self.video_filegen,
                 self.progress_dialog,
             )
+            obj.FAILURE.connect(self.video_rip_failure)
+            obj.SUCCESS.connect(self.video_rip_success)
+            self._mounted[dev] = obj
+
         elif disc_type == 'audio':
             self.log.info("%s - Assuming audio disc inserted", dev)
             self._mounted[dev] = AudioDiscHandler(
