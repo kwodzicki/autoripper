@@ -15,7 +15,7 @@ class ProgressDialog(QtWidgets.QWidget):
     # Arg is dev of disc to remove
     MKV_REMOVE_DISC = QtCore.pyqtSignal(str)
     # Args are dev of disc to attach process to and the process
-    MKV_NEW_PROCESS = QtCore.pyqtSignal(str, Popen)
+    MKV_NEW_PROCESS = QtCore.pyqtSignal(str, Popen, str)
     # First arg is dev, second is track num
     MKV_CUR_TRACK = QtCore.pyqtSignal(str, str)
     # First arg is dev, second is track num
@@ -84,13 +84,13 @@ class ProgressDialog(QtWidgets.QWidget):
             self.setVisible(False)
         self.adjustSize()
 
-    @QtCore.pyqtSlot(str, Popen)
-    def mkv_new_process(self, dev: str, proc: Popen):
+    @QtCore.pyqtSlot(str, Popen, str)
+    def mkv_new_process(self, dev: str, proc: Popen, pipe: str):
         widget = self.widgets.get(dev, None)
         if widget is None:
             return
         self.log.debug("%s - Setting new parser process", dev)
-        widget.NEW_PROCESS.emit(proc)
+        widget.NEW_PROCESS.emit(proc, pipe)
 
     @QtCore.pyqtSlot(str)
     def mkv_current_disc(self, dev: str):
