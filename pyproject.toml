@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "autoripper"
-version = "0.3.0"
+version = "0.3.1"
 description = "Package for automagically ripping audio and video discs"
 readme = "README.md"
 authors = [
@@ -31,8 +31,10 @@ requires-python = ">=3.9"
 dependencies = [
     "PyQt5",
     "pyudev",
-    "automakemkv@git+https://github.com/kwodzicki/autoMakeMKV",
-    "cdripper@git+https://github.com/kwodzicki/cdRipper",
+    "automakemkv",
+    "cdripper",
+#    "automakemkv@git+https://github.com/kwodzicki/autoMakeMKV",
+#    "cdripper@git+https://github.com/kwodzicki/cdRipper",
 ]
 
 [project.scripts]
