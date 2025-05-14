@@ -49,7 +49,7 @@ class UdevWatchdog(QtCore.QThread):
         everything: bool = False,
         extras: bool = False,
         root: str = UUID_ROOT,
-        video_filegen: Callable = paths.video_utils_outfile,
+        video_filegen: Callable = paths.outfile,
         **kwargs,
     ):
         """
@@ -207,7 +207,7 @@ class UdevWatchdog(QtCore.QThread):
 
         if proc.isRunning():
             self.log.warning("%s - Killing the ripper process!", dev)
-            proc.terminate()
+            proc.terminate(dev)
             return
 
     def quit(self, *args, **kwargs):
