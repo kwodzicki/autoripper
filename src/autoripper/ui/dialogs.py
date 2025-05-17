@@ -39,35 +39,23 @@ class SettingsDialog(QtWidgets.QDialog):
         if settings is None:
             settings = utils.load_settings()
 
-        audio_outdir = settings.pop('audio_outdir', None)
-        if audio_outdir is not None:
-            self.audio_widget.set_settings(
-                settings={'outdir': audio_outdir},
-            )
+        self.audio_widget.set_settings(
+            settings=settings.get('audio', {}),
+        )
 
-        video_outdir = settings.pop('video_outdir', None)
-        if video_outdir is not None:
-            settings['outdir'] = video_outdir
-
-        self.video_widget.set_settings(settings=settings)
+        self.video_widget.set_settings(
+            settings=settings.get('video', {}),
+        )
 
     def get_settings(self):
 
         video_settings = self.video_widget.get_settings(save=False)
         audio_settings = self.audio_widget.get_settings(save=False)
 
-        video_outdir = video_settings.pop('outdir', None)
-        audio_outdir = audio_settings.pop('outdir', None)
-
         settings = {
-            **video_settings,
-            **audio_settings,
+            'video': video_settings,
+            'audio': audio_settings,
         }
-        if video_outdir is not None:
-            settings['video_outdir'] = video_outdir
-
-        if audio_outdir is not None:
-            settings['audio_outdir'] = audio_outdir
 
         utils.save_settings(settings)
         return settings

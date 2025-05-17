@@ -25,13 +25,21 @@ def load_settings() -> dict:
     """
 
     if not os.path.isfile(SETTINGS_FILE):
-        settings = {
+        video_settings = {
             'dbdir': DBDIR,
-            'video_outdir': VIDEO_OUTDIR,
-            'audio_outdir': AUDIO_OUTDIR,
+            'outdir': VIDEO_OUTDIR,
             'everything': False,
             'extras': False,
             'show_status': True,
+            'convention': 'video_utils',
+        }
+        audio_settings = {
+            'outdir': AUDIO_OUTDIR,
+        }
+
+        settings = {
+            'video': video_settings,
+            'audio': audio_settings,
         }
         save_settings(settings)
         return settings

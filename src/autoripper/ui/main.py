@@ -58,7 +58,6 @@ class SystemTray(QtWidgets.QSystemTrayIcon):
         self.setVisible(True)
 
         settings = utils.load_settings()
-
         self.progress = progress.ProgressDialog()
         self.ripper = udev_watchdog.UdevWatchdog(
             self.progress,
@@ -114,8 +113,8 @@ class SystemTray(QtWidgets.QSystemTrayIcon):
 
         """
 
-        if not os.path.isdir(self.ripper.video_outdir):
-            dlg = MissingOutdirDialog(self.ripper.video_outdir)
+        if not os.path.isdir(self.ripper.video['outdir']):
+            dlg = MissingOutdirDialog(self.ripper.video['outdir'])
             if not dlg.exec_():
                 self.quit(force=True)
                 return
@@ -125,14 +124,14 @@ class SystemTray(QtWidgets.QSystemTrayIcon):
                 f'{self._name}: Select Video Output Folder',
             )
             if path != '':
-                self.ripper.video_outdir = path
+                self.ripper.video['outdir'] = path
                 utils.save_settings(
                     self.ripper.get_settings(),
                 )
             self.check_outdir_exists()
 
-        if not os.path.isdir(self.ripper.audio_outdir):
-            dlg = MissingOutdirDialog(self.ripper.audio_outdir)
+        if not os.path.isdir(self.ripper.audio['outdir']):
+            dlg = MissingOutdirDialog(self.ripper.audio['outdir'])
             if not dlg.exec_():
                 self.quit(force=True)
                 return
@@ -142,7 +141,7 @@ class SystemTray(QtWidgets.QSystemTrayIcon):
                 f'{self._name}: Select Audio Output Folder',
             )
             if path != '':
-                self.ripper.audio_outdir = path
+                self.ripper.audio['outdir'] = path
                 utils.save_settings(
                     self.ripper.get_settings(),
                 )

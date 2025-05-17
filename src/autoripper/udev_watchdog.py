@@ -4,7 +4,6 @@ Utilities for ripping titles
 """
 
 import logging
-from collections.abc import Callable
 import signal
 from threading import Event
 
@@ -13,7 +12,6 @@ from PyQt5 import QtCore
 import pyudev
 
 from automakemkv import OUTDIR as VIDEO_OUTDIR, UUID_ROOT, DBDIR
-from automakemkv import paths
 from automakemkv.ripper import DiscHandler as VideoDiscHandler
 from automakemkv.ui import dialogs as video_dialogs
 
@@ -44,12 +42,9 @@ class UdevWatchdog(QtCore.QThread):
     def __init__(
         self,
         progress_dialog,
-        video_outdir: str = VIDEO_OUTDIR,
-        audio_outdir: str = AUDIO_OUTDIR,
-        everything: bool = False,
-        extras: bool = False,
+        audio: dict | None = None,
+        video: dict | None = None,
         root: str = UUID_ROOT,
-        video_filegen: Callable = paths.outfile,
         **kwargs,
     ):
         """
@@ -57,23 +52,19 @@ class UdevWatchdog(QtCore.QThread):
             outdir (str) : Top-level directory for ripping files
 
         Keyword arguments:
-            everything (bool) : If set, then all titles identified
-                for ripping will be ripped. By default, only the
-                main feature will be ripped
-            extras (bool) : If set, only 'extra' features will
-                be ripped along with the main title(s). Main
-                title(s) include Theatrical/Extended/etc.
-                versions for movies, and episodes for series.
-            root (str) : Location of the 'by-uuid' directory
-                where discs are mounted. This is used to
-                get the unique ID of the disc.
-            video_filegen (func) : Function to use to generate
-                output file names based on information
-                from the database. This function must
-                accept (outdir, info, extras=bool), where info is
-                a dictionary of data loaded from the
-                disc database, and extras specifies if
-                extras should be ripped.
+            video (dict): Option for video. These include:
+                everything (bool) : If set, then all titles identified
+                    for ripping will be ripped. By default, only the
+                    main feature will be ripped
+                extras (bool) : If set, only 'extra' features will
+                    be ripped along with the main title(s). Main
+                    title(s) include Theatrical/Extended/etc.
+                    versions for movies, and episodes for series.
+                root (str) : Location of the 'by-uuid' directory
+                    where discs are mounted. This is used to
+                    get the unique ID of the disc.
+                convention (str) : File naming convention for video files
+            audio (dict): options for audio
 
         """
 
@@ -83,16 +74,10 @@ class UdevWatchdog(QtCore.QThread):
 
         self.HANDLE_DISC.connect(self.handle_disc)
 
-        self._video_outdir = None
-        self._audio_outdir = None
+        self.video = video or {}
+        self.audio = audio or {}
 
-        self.dbdir = kwargs.get('dbdir', DBDIR)
-        self.video_outdir = video_outdir
-        self.audio_outdir = audio_outdir
-        self.everything = everything
-        self.extras = extras
         self.root = root
-        self.video_filegen = video_filegen
         self.progress_dialog = progress_dialog
 
         self._mounting = {}
@@ -103,21 +88,21 @@ class UdevWatchdog(QtCore.QThread):
 
     @property
     def video_outdir(self):
-        return self._video_outdir
+        return self.video.get('outdir', None)
 
     @video_outdir.setter
     def video_outdir(self, val):
         self.log.info('Video output directory set to : %s', val)
-        self._video_outdir = val
+        self.video['outdir'] = val
 
     @property
     def audio_outdir(self):
-        return self._audio_outdir
+        return self.audio.get('outdir', None)
 
     @audio_outdir.setter
     def audio_outdir(self, val):
         self.log.info('Audio output directory set to : %s', val)
-        self._audio_outdir = val
+        self.audio['outdir'] = val
 
     def set_settings(self, **kwargs):
         """
@@ -126,20 +111,18 @@ class UdevWatchdog(QtCore.QThread):
         """
 
         self.log.debug('Updating ripping options')
-        self.dbdir = kwargs.get('dbdir', self.dbdir)
-        self.video_outdir = kwargs.get('video_outdir', self.video_outdir)
-        self.audio_outdir = kwargs.get('audio_outdir', self.audio_outdir)
-        self.everything = kwargs.get('everything', self.everything)
-        self.extras = kwargs.get('extras', self.extras)
+        self.video.update(
+            kwargs.get('video', {})
+        )
+        self.audio.update(
+            kwargs.get('audio', {})
+        )
 
     def get_settings(self):
 
         return {
-            'dbdir': self.dbdir,
-            'video_outdir': self.video_outdir,
-            'audio_outdir': self.audio_outdir,
-            'everything': self.everything,
-            'extras': self.extras,
+            'video': self.video,
+            'audio': self.audio,
         }
 
     def run(self):
@@ -236,12 +219,12 @@ class UdevWatchdog(QtCore.QThread):
             self.log.info("%s - Assuming video disc inserted", dev)
             obj = VideoDiscHandler(
                 dev,
-                self.video_outdir,
-                self.everything,
-                self.extras,
-                self.dbdir,
+                self.video.get('outdir', VIDEO_OUTDIR),
+                self.video.get('everything', False),
+                self.video.get('extras', False),
+                self.video.get('dbdir', DBDIR),
                 self.root,
-                self.video_filegen,
+                self.video.get('convention', 'video_utils'),
                 self.progress_dialog,
             )
             obj.FAILURE.connect(self.video_rip_failure)
@@ -252,7 +235,7 @@ class UdevWatchdog(QtCore.QThread):
             self.log.info("%s - Assuming audio disc inserted", dev)
             self._mounted[dev] = AudioDiscHandler(
                 dev,
-                self.audio_outdir,
+                self.audio.get('outdir', AUDIO_OUTDIR),
                 self.progress_dialog,
             )
         else:
