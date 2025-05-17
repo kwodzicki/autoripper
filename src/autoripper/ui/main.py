@@ -9,7 +9,7 @@ from PyQt5 import QtCore
 from automakemkv.ui.dialogs import MissingOutdirDialog
 
 from .. import LOG, STREAM, NAME
-from .. import udev_watchdog
+from ..watchdogs import linux
 from . import progress
 from . import dialogs
 from . import utils
@@ -59,7 +59,7 @@ class SystemTray(QtWidgets.QSystemTrayIcon):
 
         settings = utils.load_settings()
         self.progress = progress.ProgressDialog()
-        self.ripper = udev_watchdog.UdevWatchdog(
+        self.ripper = linux.Watchdog(
             self.progress,
             **settings,
         )

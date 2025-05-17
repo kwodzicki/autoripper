@@ -30,7 +30,7 @@ requires-python = ">=3.9"
 
 dependencies = [
     "PyQt5",
-    "pyudev",
+    "pyudev ; platform_system == 'Linux'",
     "automakemkv",
     "cdripper",
 #    "automakemkv@git+https://github.com/kwodzicki/autoMakeMKV",

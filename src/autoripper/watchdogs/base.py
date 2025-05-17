@@ -4,33 +4,20 @@ Utilities for ripping titles
 """
 
 import logging
-import signal
-from threading import Event
 
 from PyQt5 import QtCore
 
-import pyudev
-
-from automakemkv import OUTDIR as VIDEO_OUTDIR, UUID_ROOT, DBDIR
+from automakemkv import OUTDIR as VIDEO_OUTDIR, DBDIR
 from automakemkv.ripper import DiscHandler as VideoDiscHandler
 from automakemkv.ui import dialogs as video_dialogs
 
 from cdripper import OUTDIR as AUDIO_OUTDIR
 from cdripper.ripper import DiscHandler as AudioDiscHandler
 
-KEY = 'DEVNAME'
-CHANGE = 'DISK_MEDIA_CHANGE'
-STATUS = "ID_CDROM_MEDIA_STATE"
-EJECT = "DISK_EJECT_REQUEST"  # This appears when initial eject requested
-READY = "SYSTEMD_READY"  # This appears when disc tray is out
-
-RUNNING = Event()
-
-signal.signal(signal.SIGINT, lambda *args: RUNNING.set())
-signal.signal(signal.SIGTERM, lambda *args: RUNNING.set())
+from . import RUNNING
 
 
-class UdevWatchdog(QtCore.QThread):
+class BaseWatchdog(QtCore.QThread):
     """
     Main watchdog for disc monitoring/ripping
 
@@ -39,14 +26,7 @@ class UdevWatchdog(QtCore.QThread):
     # Dev device and disc type string
     HANDLE_DISC = QtCore.pyqtSignal(str, str)
 
-    def __init__(
-        self,
-        progress_dialog,
-        audio: dict | None = None,
-        video: dict | None = None,
-        root: str = UUID_ROOT,
-        **kwargs,
-    ):
+    def __init__(self):
         """
         Arguments:
             outdir (str) : Top-level directory for ripping files
@@ -74,17 +54,14 @@ class UdevWatchdog(QtCore.QThread):
 
         self.HANDLE_DISC.connect(self.handle_disc)
 
-        self.video = video or {}
-        self.audio = audio or {}
+        self.video = {}
+        self.audio = {}
 
-        self.root = root
-        self.progress_dialog = progress_dialog
+        self.root = None
+        self.progress_dialog = None
 
         self._mounting = {}
         self._mounted = {}
-        self._context = pyudev.Context()
-        self._monitor = pyudev.Monitor.from_netlink(self._context)
-        self._monitor.filter_by(subsystem='block')
 
     @property
     def video_outdir(self):
@@ -124,63 +101,6 @@ class UdevWatchdog(QtCore.QThread):
             'video': self.video,
             'audio': self.audio,
         }
-
-    def run(self):
-        """
-        Processing for thread
-
-        Polls udev for device changes, running MakeMKV pipelines
-        when dvd/bluray found
-
-        """
-
-        self.log.info('Watchdog thread started')
-        while not RUNNING.is_set():
-            device = self._monitor.poll(timeout=1.0)
-            if device is None:
-                continue
-
-            # Get value for KEY. If is None, then did not exist, so continue
-            dev = device.properties.get(KEY, None)
-            if dev is None:
-                continue
-
-            if device.properties.get(EJECT, ''):
-                self.log.debug("%s - Eject request", dev)
-                self._ejecting(dev)
-                continue
-
-            if device.properties.get(READY, '') == '0':
-                self.log.debug("%s - Drive is ejected", dev)
-                self._ejecting(dev)
-                continue
-
-            if device.properties.get(CHANGE, '') != '1':
-                self.log.debug(
-                    "%s - Not a '%s' event, ignoring",
-                    dev,
-                    CHANGE,
-                )
-                continue
-
-            status = device.properties.get(STATUS, '')
-            if status not in ('', 'complete'):
-                self.log.debug(
-                    "%s - Caught event that was NOT insert/eject, ignoring",
-                    dev,
-                )
-                continue
-
-            if dev in self._mounted:
-                self.log.info("%s - Device in mounted list", dev)
-                continue
-
-            self.log.debug("%s - Finished mounting", dev)
-            self._mounted[dev] = None
-            self.HANDLE_DISC.emit(
-                dev,
-                'video' if status == 'complete' else 'audio',
-            )
 
     def _ejecting(self, dev):
 
@@ -222,9 +142,9 @@ class UdevWatchdog(QtCore.QThread):
                 self.video.get('outdir', VIDEO_OUTDIR),
                 self.video.get('everything', False),
                 self.video.get('extras', False),
+                self.video.get('convention', 'video_utils'),
                 self.video.get('dbdir', DBDIR),
                 self.root,
-                self.video.get('convention', 'video_utils'),
                 self.progress_dialog,
             )
             obj.FAILURE.connect(self.video_rip_failure)
