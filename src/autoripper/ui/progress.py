@@ -22,9 +22,13 @@ class ProgressDialog(QtWidgets.QWidget):
     MKV_CUR_DISC = QtCore.pyqtSignal(str, str)
 
     # First arg in dev, second is all info
-    CD_ADD_DISC = QtCore.pyqtSignal(str, dict)
+    CD_ADD_DISC = QtCore.pyqtSignal(str)
     # Arg is dev of disc to remove
     CD_REMOVE_DISC = QtCore.pyqtSignal(str)
+    # First arg is dev
+    CD_GET_METADATA = QtCore.pyqtSignal(str)
+    # First argument is dev, second is track info
+    CD_SET_TRACKS_INFO = QtCore.pyqtSignal(str, dict)
     # First arg is dev, second is track num
     CD_CUR_TRACK = QtCore.pyqtSignal(str, str)
     # First arg is dev, second is size of cur track
@@ -55,6 +59,8 @@ class ProgressDialog(QtWidgets.QWidget):
 
         self.CD_ADD_DISC.connect(self.cd_add_disc)
         self.CD_REMOVE_DISC.connect(self.cd_remove_disc)
+        self.CD_GET_METADATA.connect(self.cd_get_metadata)
+        self.CD_SET_TRACKS_INFO.connect(self.cd_set_tracks_info)
         self.CD_CUR_TRACK.connect(self.cd_current_track)
         self.CD_TRACK_SIZE.connect(self.cd_track_size)
 
@@ -72,6 +78,7 @@ class ProgressDialog(QtWidgets.QWidget):
         self.show()
         self.adjustSize()
 
+    # Slots for video DVD/Blu-ray
     @QtCore.pyqtSlot(str)
     def mkv_remove_disc(self, dev: str):
         widget = self.widgets.pop(dev, None)
@@ -106,10 +113,11 @@ class ProgressDialog(QtWidgets.QWidget):
         self.log.debug("%s - Setting current track: %s", dev, title)
         widget.current_track(title)
 
-    @QtCore.pyqtSlot(str, dict)
-    def cd_add_disc(self, dev: str, info: dict):
+    # Slots for audio CD
+    @QtCore.pyqtSlot(str)
+    def cd_add_disc(self, dev: str):
         self.log.debug("%s - Disc addeds", dev)
-        widget = AudioProgressWidget(dev, info)
+        widget = AudioProgressWidget(dev)
         widget.CANCEL.connect(self.cancel)
 
         self.layout.addWidget(widget)
@@ -128,6 +136,14 @@ class ProgressDialog(QtWidgets.QWidget):
             self.setVisible(False)
         self.adjustSize()
 
+    @QtCore.pyqtSlot(str, dict)
+    def cd_set_tracks_info(self, dev: str, info: dict):
+        widget = self.widgets.get(dev, None)
+        if widget is None:
+            return
+        self.log.debug("%s - Setting track info", dev)
+        widget.SET_TRACKS_INFO.emit(info)
+
     @QtCore.pyqtSlot(str, str)
     def cd_current_track(self, dev: str, title: str):
         widget = self.widgets.get(dev, None)
@@ -135,6 +151,14 @@ class ProgressDialog(QtWidgets.QWidget):
             return
         self.log.debug("%s - Setting current track: %s", dev, title)
         widget.current_track(title)
+
+    @QtCore.pyqtSlot(str)
+    def cd_get_metadata(self, dev: str) -> None:
+        widget = self.widgets.get(dev, None)
+        if widget is None:
+            return
+        self.log.debug("%s - Notifying of metadata grab", dev)
+        widget.METADATA.emit()
 
     @QtCore.pyqtSlot(str, int)
     def cd_track_size(self, dev, tsize):
@@ -144,7 +168,9 @@ class ProgressDialog(QtWidgets.QWidget):
         self.log.debug("%s - Update current track size: %d", dev, tsize)
         widget.track_size(tsize)
 
-    @QtCore.pyqtSlot(str)
-    def cancel(self, dev):
+    @QtCore.pyqtSlot()
+    def cancel(self):
+        dev = self.sender().dev
+        self.log.info("%s - Emitting cancel event", dev)
         self.CANCEL.emit(dev)
         self.MKV_REMOVE_DISC.emit(dev)
