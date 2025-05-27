@@ -5,11 +5,12 @@ import argparse
 
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
+from PyQt5 import QtGui
 
-from automakemkv.ui.dialogs import MissingOutdirDialog
+from automakemkv.ui.dialogs import MissingDirDialog
 
-from .. import LOG, STREAM, NAME
-from .. import udev_watchdog
+from .. import LOG, STREAM, NAME, APP_ICON, TRAY_ICON
+from ..watchdogs import linux
 from . import progress
 from . import dialogs
 from . import utils
@@ -22,15 +23,8 @@ class SystemTray(QtWidgets.QSystemTrayIcon):
     """
 
     def __init__(self, app, name=NAME):
-        icon = (
-            QtWidgets
-            .QApplication
-            .style()
-            .standardIcon(
-                QtWidgets.QStyle.SP_DriveDVDIcon
-            )
-        )
-        super().__init__(icon, app)
+        super().__init__(QtGui.QIcon(TRAY_ICON), app)
+        self.setToolTip(NAME)
 
         self.__log = logging.getLogger(__name__)
         self._name = name
@@ -58,9 +52,8 @@ class SystemTray(QtWidgets.QSystemTrayIcon):
         self.setVisible(True)
 
         settings = utils.load_settings()
-
         self.progress = progress.ProgressDialog()
-        self.ripper = udev_watchdog.UdevWatchdog(
+        self.ripper = linux.Watchdog(
             self.progress,
             **settings,
         )
@@ -76,7 +69,7 @@ class SystemTray(QtWidgets.QSystemTrayIcon):
     def settings_widget(self, *args, **kwargs):
 
         self.__log.debug('opening settings')
-        settings_widget = dialogs.SettingsWidget()
+        settings_widget = dialogs.SettingsDialog()
         if settings_widget.exec_():
             self.ripper.set_settings(
                 **settings_widget.get_settings(),
@@ -114,8 +107,8 @@ class SystemTray(QtWidgets.QSystemTrayIcon):
 
         """
 
-        if not os.path.isdir(self.ripper.video_outdir):
-            dlg = MissingOutdirDialog(self.ripper.video_outdir)
+        if not os.path.isdir(self.ripper.video['outdir']):
+            dlg = MissingDirDialog(self.ripper.video['outdir'], 'Output')
             if not dlg.exec_():
                 self.quit(force=True)
                 return
@@ -125,14 +118,14 @@ class SystemTray(QtWidgets.QSystemTrayIcon):
                 f'{self._name}: Select Video Output Folder',
             )
             if path != '':
-                self.ripper.video_outdir = path
+                self.ripper.video['outdir'] = path
                 utils.save_settings(
                     self.ripper.get_settings(),
                 )
             self.check_outdir_exists()
 
-        if not os.path.isdir(self.ripper.audio_outdir):
-            dlg = MissingOutdirDialog(self.ripper.audio_outdir)
+        if not os.path.isdir(self.ripper.audio['outdir']):
+            dlg = MissingDirDialog(self.ripper.audio['outdir'], 'Output')
             if not dlg.exec_():
                 self.quit(force=True)
                 return
@@ -142,7 +135,7 @@ class SystemTray(QtWidgets.QSystemTrayIcon):
                 f'{self._name}: Select Audio Output Folder',
             )
             if path != '':
-                self.ripper.audio_outdir = path
+                self.ripper.audio['outdir'] = path
                 utils.save_settings(
                     self.ripper.get_settings(),
                 )
@@ -164,6 +157,8 @@ def cli():
     LOG.addHandler(STREAM)
 
     app = QtWidgets.QApplication(sys.argv)
+    app.setApplicationName(NAME)
+    app.setWindowIcon(QtGui.QIcon(APP_ICON))
     app.setQuitOnLastWindowClosed(False)
     _ = SystemTray(app)
     app.exec_()

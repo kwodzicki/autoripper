@@ -1,31 +1,23 @@
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 
-from automakemkv.ui.widgets import PathSelector
+from automakemkv.ui.dialogs import SettingsWidget as VideoSettingsWidget
+from cdripper.ui.dialogs import SettingsWidget as AudioSettingsWidget
 
 from . import utils
 
 
-class SettingsWidget(QtWidgets.QDialog):
+class SettingsDialog(QtWidgets.QDialog):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.dbdir = PathSelector('autoMakeMKV Database Location:')
-        self.video_outdir = PathSelector('Video Output Location:')
-        self.audio_outdir = PathSelector('Audio Output Location:')
+        self.tabs = QtWidgets.QTabWidget()
+        self.video_widget = VideoSettingsWidget()
+        self.audio_widget = AudioSettingsWidget()
 
-        radio_layout = QtWidgets.QVBoxLayout()
-        self.features = QtWidgets.QRadioButton("Only Features")
-        self.extras = QtWidgets.QRadioButton("Only Extras")
-        self.everything = QtWidgets.QRadioButton("All Titles")
-        radio_layout.addWidget(self.features)
-        radio_layout.addWidget(self.extras)
-        radio_layout.addWidget(self.everything)
-        radio_widget = QtWidgets.QWidget()
-        radio_widget.setLayout(radio_layout)
-
-        self.set_settings()
+        self.tabs.addTab(self.video_widget, 'Video')
+        self.tabs.addTab(self.audio_widget, 'Audio')
 
         buttons = (
             QtWidgets.QDialogButtonBox.Save
@@ -36,37 +28,35 @@ class SettingsWidget(QtWidgets.QDialog):
         button_box.rejected.connect(self.reject)
 
         layout = QtWidgets.QVBoxLayout()
-        layout.addWidget(self.dbdir)
-        layout.addWidget(self.video_outdir)
-        layout.addWidget(self.audio_outdir)
-        layout.addWidget(radio_widget)
+        layout.addWidget(self.tabs)
         layout.addWidget(button_box)
+
         self.setLayout(layout)
+        self.set_settings()
 
-    def set_settings(self):
+    def set_settings(self, settings: dict | None = None):
 
-        settings = utils.load_settings()
-        self.features.setChecked(True)
-        if 'dbdir' in settings:
-            self.dbdir.setText(settings['dbdir'])
-        if 'video_outdir' in settings:
-            self.video_outdir.setText(settings['video_outdir'])
-        if 'audio_outdir' in settings:
-            self.audio_outdir.setText(settings['audio_outdir'])
-        if 'everything' in settings:
-            self.everything.setChecked(settings['everything'])
-        if 'extras' in settings:
-            self.extras.setChecked(settings['extras'])
+        if settings is None:
+            settings = utils.load_settings()
+
+        self.audio_widget.set_settings(
+            settings=settings.get('audio', {}),
+        )
+
+        self.video_widget.set_settings(
+            settings=settings.get('video', {}),
+        )
 
     def get_settings(self):
 
+        video_settings = self.video_widget.get_settings(save=False)
+        audio_settings = self.audio_widget.get_settings(save=False)
+
         settings = {
-            'dbdir': self.dbdir.getText(),
-            'video_outdir': self.video_outdir.getText(),
-            'audio_outdir': self.audio_outdir.getText(),
-            'extras': self.extras.isChecked(),
-            'everything': self.everything.isChecked(),
+            'video': video_settings,
+            'audio': audio_settings,
         }
+
         utils.save_settings(settings)
         return settings
 
