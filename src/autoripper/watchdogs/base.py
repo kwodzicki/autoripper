@@ -62,23 +62,43 @@ class BaseWatchdog(QtCore.QThread):
         self.root = root
 
         self._mounted = []
+        self._failure = []
+        self._success = []
 
     def quit(self, *args, **kwargs):
         RUNNING.set()
 
-    @QtCore.pyqtSlot()
-    def video_rip_failure(self):
+    @QtCore.pyqtSlot(str)
+    def video_rip_failure(self, fname: str):
 
         dev = self.sender().dev
-        dialog = video_dialogs.RipFailure(dev)
+        dialog = video_dialogs.RipFailure(dev, fname)
+        self._failure.append(dialog)
+        dialog.FINISHED.connect(self._failure_closed)
         dialog.exec_()
 
-    @QtCore.pyqtSlot()
-    def video_rip_success(self):
+    @QtCore.pyqtSlot(int)
+    def _failure_closed(self, res: int):
+        obj = self.sender()
+        if obj in self._failure:
+            self._failure.remove(obj)
+        obj.deleteLater()
+
+    @QtCore.pyqtSlot(str)
+    def video_rip_success(self, fname: str):
 
         dev = self.sender().dev
-        dialog = video_dialogs.RipSuccess(dev)
+        dialog = video_dialogs.RipSuccess(dev, fname)
+        self._success.append(dialog)
+        dialog.FINISHED.connect(self._success_closed)
         dialog.exec_()
+
+    @QtCore.pyqtSlot(int)
+    def _success_closed(self, res: int):
+        obj = self.sender()
+        if obj in self._success:
+            self._success.remove(obj)
+        obj.deleteLater()
 
     @QtCore.pyqtSlot()
     def rip_finished(self):
