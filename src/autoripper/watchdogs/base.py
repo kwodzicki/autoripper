@@ -13,13 +13,12 @@ if sys.platform.startswith('win'):
     import ctypes
 
 try:
-    from cdripper import OUTDIR as AUDIO_OUTDIR
     from cdripper.ripper import DiscHandler as AudioDiscHandler
 except Exception:
     AudioDiscHandler = None
 
 try:
-    from automakemkv import OUTDIR as VIDEO_OUTDIR, DBDIR, UUID_ROOT
+    from automakemkv import UUID_ROOT
     from automakemkv.ripper import DiscHandler as VideoDiscHandler
     from automakemkv.ui import dialogs as video_dialogs
 except Exception:
@@ -42,8 +41,6 @@ class BaseWatchdog(QtCore.QThread):
         self,
         progress,
         *args,
-        video: dict | None = None,
-        audio: dict | None = None,
         root: str | None = UUID_ROOT,
         **kwargs,
     ):
@@ -52,19 +49,6 @@ class BaseWatchdog(QtCore.QThread):
             outdir (str) : Top-level directory for ripping files
 
         Keyword arguments:
-            video (dict): Option for video. These include:
-                everything (bool) : If set, then all titles identified
-                    for ripping will be ripped. By default, only the
-                    main feature will be ripped
-                extras (bool) : If set, only 'extra' features will
-                    be ripped along with the main title(s). Main
-                    title(s) include Theatrical/Extended/etc.
-                    versions for movies, and episodes for series.
-                root (str) : Location of the 'by-uuid' directory
-                    where discs are mounted. This is used to
-                    get the unique ID of the disc.
-                convention (str) : File naming convention for video files
-            audio (dict): options for audio
 
         """
 
@@ -74,52 +58,10 @@ class BaseWatchdog(QtCore.QThread):
 
         self.HANDLE_INSERT.connect(self.handle_insert)
 
-        self.video = video or {}
-        self.audio = audio or {}
-
         self.progress = progress
         self.root = root
 
         self._mounted = []
-
-    @property
-    def video_outdir(self):
-        return self.video.get('outdir', None)
-
-    @video_outdir.setter
-    def video_outdir(self, val):
-        self.log.info('Video output directory set to : %s', val)
-        self.video['outdir'] = val
-
-    @property
-    def audio_outdir(self):
-        return self.audio.get('outdir', None)
-
-    @audio_outdir.setter
-    def audio_outdir(self, val):
-        self.log.info('Audio output directory set to : %s', val)
-        self.audio['outdir'] = val
-
-    def set_settings(self, **kwargs):
-        """
-        Set options for ripping discs
-
-        """
-
-        self.log.debug('Updating ripping options')
-        self.video.update(
-            kwargs.get('video', {})
-        )
-        self.audio.update(
-            kwargs.get('audio', {})
-        )
-
-    def get_settings(self):
-
-        return {
-            'video': self.video,
-            'audio': self.audio,
-        }
 
     def quit(self, *args, **kwargs):
         RUNNING.set()
@@ -176,11 +118,6 @@ class BaseWatchdog(QtCore.QThread):
             self.log.info("%s - Assuming video disc inserted", dev)
             obj = VideoDiscHandler(
                 dev,
-                self.video.get('outdir', VIDEO_OUTDIR),
-                self.video.get('everything', False),
-                self.video.get('extras', False),
-                self.video.get('convention', 'video_utils'),
-                self.video.get('dbdir', DBDIR),
                 self.root,
                 self.progress,
             )
@@ -204,7 +141,6 @@ class BaseWatchdog(QtCore.QThread):
             obj = AudioDiscHandler(
                 dev,
                 self.progress,
-                outdir=self.audio.get('outdir', AUDIO_OUTDIR),
             )
             obj.FINISHED.connect(self.rip_finished)
             obj.EJECT_DISC.connect(self.eject_disc)
