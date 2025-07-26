@@ -71,7 +71,9 @@ class BaseWatchdog(QtCore.QThread):
     @QtCore.pyqtSlot(str)
     def video_rip_failure(self, fname: str):
 
-        dev = self.sender().dev
+        sender = self.sender()
+        sender.wait()  # Wait for thread to finish
+        dev = sender.dev
         dialog = video_dialogs.RipFailure(dev, fname)
         self._failure.append(dialog)
         dialog.FINISHED.connect(self._failure_closed)
@@ -87,7 +89,9 @@ class BaseWatchdog(QtCore.QThread):
     @QtCore.pyqtSlot(str)
     def video_rip_success(self, fname: str):
 
-        dev = self.sender().dev
+        sender = self.sender()
+        sender.wait()  # Wait for thread to finish
+        dev = sender.dev
         dialog = video_dialogs.RipSuccess(dev, fname)
         self._success.append(dialog)
         dialog.FINISHED.connect(self._success_closed)
@@ -104,6 +108,7 @@ class BaseWatchdog(QtCore.QThread):
     def rip_finished(self):
 
         sender = self.sender()
+        sender.wait()  # Wait for thread to finish
         self.log.debug("%s - Processing finished event", sender.dev)
         sender.cancel(sender.dev)
         if sender in self._mounted:
