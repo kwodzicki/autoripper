@@ -32,33 +32,10 @@ class SettingsDialog(QtWidgets.QDialog):
         layout.addWidget(button_box)
 
         self.setLayout(layout)
-        self.set_settings()
 
-    def set_settings(self, settings: dict | None = None):
-
-        if settings is None:
-            settings = utils.load_settings()
-
-        self.audio_widget.set_settings(
-            settings=settings.get('audio', {}),
-        )
-
-        self.video_widget.set_settings(
-            settings=settings.get('video', {}),
-        )
-
-    def get_settings(self):
-
-        video_settings = self.video_widget.get_settings(save=False)
-        audio_settings = self.audio_widget.get_settings(save=False)
-
-        settings = {
-            'video': video_settings,
-            'audio': audio_settings,
-        }
-
-        utils.save_settings(settings)
-        return settings
+    @QtCore.pyqtProperty(bool)
+    def changed(self) -> bool:
+        return self.video_widget.changed or self.audio_widget.changed
 
 
 class MyQDialog(QtWidgets.QDialog):
