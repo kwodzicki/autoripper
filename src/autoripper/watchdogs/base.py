@@ -131,7 +131,7 @@ class BaseWatchdog(QtCore.QThread):
                     "%s - The 'autoMakeMKV' program was not imported. "
                     "Are you sure it is installed? Unable to process "
                     "video discs (DVD/Blu-ray)!",
-                    self.dev,
+                    dev,
                 )
                 return
 
